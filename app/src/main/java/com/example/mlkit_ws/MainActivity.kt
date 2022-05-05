@@ -10,7 +10,7 @@ import com.google.android.material.navigation.NavigationView
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.content_main.*
 
-private var currFragment: Fragment = Sample_1()
+private var currFragment: Fragment = TranslateFragment()
 private var currTitle: String = "Sample-Project 1"
 
 class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
@@ -42,7 +42,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
         when(item.itemId) {
             R.id.sample_1 -> {
-                changCurrFragment("Sample-Project 1", Sample_1())
+                changCurrFragment("Sample-Project 1", TranslateFragment())
             }
         }
 

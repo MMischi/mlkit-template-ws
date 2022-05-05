@@ -18,7 +18,12 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import com.google.mlkit.common.model.DownloadConditions
 import com.google.mlkit.nl.languageid.LanguageIdentification
+import com.google.mlkit.nl.translate.TranslateLanguage
+import com.google.mlkit.nl.translate.Translation
+import com.google.mlkit.nl.translate.Translator
+import com.google.mlkit.nl.translate.TranslatorOptions
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
@@ -27,6 +32,9 @@ class TranslateFragment : Fragment() {
 
     private val textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     private val langIdentifier = LanguageIdentification.getClient()
+    private val downloadConditions = DownloadConditions.Builder()
+        .requireWifi()
+        .build()
 
     private lateinit var originalTextView: TextView
     private lateinit var langTextView: TextView
@@ -44,17 +52,19 @@ class TranslateFragment : Fragment() {
     private var originalText
         get() = originalTextView.text.toString()
         set(v) {
-            val length = v.length
-            if (length > 50)
-                originalTextView.text = "${v.substring(0, 50)}..."
-            else
-                originalTextView.text = v
+            originalTextView.text = "Original: $v"
         }
 
     private var langText
         get() = langTextView.text.toString()
         set(v) {
-            langTextView.text = v
+            langTextView.text = "Language: $v"
+        }
+
+    private var translatedText
+        get() = translatedTextView.text.toString()
+        set(v) {
+            translatedTextView.text = "Translated: $v"
         }
 
 
@@ -114,10 +124,37 @@ class TranslateFragment : Fragment() {
         langIdentifier.identifyLanguage(text)
             .addOnSuccessListener {
                 langText = it
+                translate(text, it)
             }
             .addOnFailureListener {
                 toast(it.message ?: "Everything went wrong")
             }
+    }
+
+    private fun translate(text: String, lang: String) {
+        val translator = makeTranslatorFor(lang)
+        toast("Downloading language pack if needed...")
+        translator.downloadModelIfNeeded(downloadConditions)
+            .addOnSuccessListener {
+                translator.translate(text)
+                    .addOnSuccessListener {
+                        translatedText = it
+                    }
+                    .addOnFailureListener {
+                        toast(it.message ?: "Everything went wrong")
+                    }
+            }
+            .addOnFailureListener {
+                toast(it.message ?: "Everything went wrong")
+            }
+    }
+
+    private fun makeTranslatorFor(lang: String): Translator {
+        val options = TranslatorOptions.Builder()
+            .setSourceLanguage(lang)
+            .setTargetLanguage(TranslateLanguage.ENGLISH)
+            .build()
+        return Translation.getClient(options)
     }
 
     private fun toast(message: String) {

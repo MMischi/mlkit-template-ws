@@ -18,18 +18,20 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import com.google.mlkit.nl.languageid.LanguageIdentification
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 
 class TranslateFragment : Fragment() {
 
-    private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    private val textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    private val langIdentifier = LanguageIdentification.getClient()
 
     private lateinit var originalTextView: TextView
+    private lateinit var langTextView: TextView
     private lateinit var translatedTextView: TextView
     private lateinit var picImageView: ImageView
-
     private lateinit var launchCam: ActivityResultLauncher<Intent>
 
 
@@ -42,7 +44,17 @@ class TranslateFragment : Fragment() {
     private var originalText
         get() = originalTextView.text.toString()
         set(v) {
-            originalTextView.text = v
+            val length = v.length
+            if (length > 50)
+                originalTextView.text = "${v.substring(0, 50)}..."
+            else
+                originalTextView.text = v
+        }
+
+    private var langText
+        get() = langTextView.text.toString()
+        set(v) {
+            langTextView.text = v
         }
 
 
@@ -55,6 +67,7 @@ class TranslateFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         originalTextView = view.findViewById(R.id.txt_original)
+        langTextView = view.findViewById(R.id.txt_lang)
         translatedTextView = view.findViewById(R.id.txt_translated)
         picImageView = view.findViewById(R.id.img_pic)
         view.findViewById<Button>(R.id.btn_translate).setOnClickListener { onTranslateClicked() }
@@ -81,15 +94,26 @@ class TranslateFragment : Fragment() {
     private fun onTranslateClicked() {
         if (hasCameraPermission) {
             launchCam.launch(Intent(MediaStore.ACTION_IMAGE_CAPTURE))
-        }else
+        } else
             toast("You have no permission here!")
     }
 
     private fun detectTextIn(bitmap: Bitmap) {
         val img = InputImage.fromBitmap(bitmap, 0)
-        recognizer.process(img)
+        textRecognizer.process(img)
             .addOnSuccessListener {
                 originalText = it.text
+                identifyLanguage(it.text)
+            }
+            .addOnFailureListener {
+                toast(it.message ?: "Everything went wrong")
+            }
+    }
+
+    private fun identifyLanguage(text: String) {
+        langIdentifier.identifyLanguage(text)
+            .addOnSuccessListener {
+                langText = it
             }
             .addOnFailureListener {
                 toast(it.message ?: "Everything went wrong")

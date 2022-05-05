@@ -17,30 +17,33 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import kotlinx.android.synthetic.main.fragment_sample_1.*
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 
 class Sample_1 : Fragment() {
 
-    private val REQUEST_CAMERA = 123
-    private val REQUIRED_PERMISSIONS = arrayOf(android.Manifest.permission.CAMERA)
+    private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
     private lateinit var originalTextView: TextView
     private lateinit var translatedTextView: TextView
     private lateinit var picImageView: ImageView
 
-    private lateinit var checkPermissions: ActivityResultLauncher<String>
     private lateinit var launchCam: ActivityResultLauncher<Intent>
 
 
-    private val allPermissionsGranted
-        get() =
-            REQUIRED_PERMISSIONS.all {
-                ContextCompat.checkSelfPermission(
-                    requireContext(), it
-                ) == PackageManager.PERMISSION_GRANTED
-            }
+    private val hasCameraPermission
+        get() = ContextCompat.checkSelfPermission(
+            requireContext(),
+            Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+
+    private var originalText
+        get() = originalTextView.text.toString()
+        set(v) {
+            originalTextView.text = v
+        }
 
 
     override fun onCreateView(
@@ -60,27 +63,41 @@ class Sample_1 : Fragment() {
     override fun onAttach(context: Context) {
         super.onAttach(context)
 
-        checkPermissions =
-            registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-                if (!granted)
-                    Toast.makeText(context, "Bruh", Toast.LENGTH_SHORT).show()
-            }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (!granted)
+                toast("No permission!")
+        }.launch(Manifest.permission.CAMERA)
 
         launchCam = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
             val img = it.data?.extras?.get("data") as Bitmap?
-            if (img != null)
+            if (img != null) {
                 picImageView.setImageBitmap(img)
-            else
-                Toast.makeText(requireContext(), "Very sad, no picture", Toast.LENGTH_SHORT).show()
+                detectTextIn(img)
+            } else
+                toast("No picture for you")
         }
-
-        checkPermissions.launch(Manifest.permission.CAMERA)
     }
 
     private fun onTranslateClicked() {
-        if (allPermissionsGranted) {
+        if (hasCameraPermission) {
             launchCam.launch(Intent(MediaStore.ACTION_IMAGE_CAPTURE))
-        }
+        }else
+            toast("You have no permission here!")
+    }
+
+    private fun detectTextIn(bitmap: Bitmap) {
+        val img = InputImage.fromBitmap(bitmap, 0)
+        recognizer.process(img)
+            .addOnSuccessListener {
+                originalText = it.text
+            }
+            .addOnFailureListener {
+                toast(it.message ?: "Everything went wrong")
+            }
+    }
+
+    private fun toast(message: String) {
+        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 
 }

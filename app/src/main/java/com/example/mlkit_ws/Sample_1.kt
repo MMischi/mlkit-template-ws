@@ -77,7 +77,7 @@ class Sample_1 : Fragment() {
         checkPermissions.launch(Manifest.permission.CAMERA)
     }
 
-    public fun onTranslateClicked() {
+    private fun onTranslateClicked() {
         if (allPermissionsGranted) {
             launchCam.launch(Intent(MediaStore.ACTION_IMAGE_CAPTURE))
         }
